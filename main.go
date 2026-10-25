@@ -8,7 +8,7 @@ import (
 	stevecli "github.com/rancher/steve/pkg/server/cli"
 	"github.com/rancher/wrangler/v3/pkg/signals"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 
 	keconfig "github.com/cnrancher/kube-explorer/internal/config"
 	"github.com/cnrancher/kube-explorer/internal/server"
