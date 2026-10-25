@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 var InsecureSkipTLSVerify bool
@@ -12,26 +12,26 @@ var BindAddress string
 
 func Flags() []cli.Flag {
 	return []cli.Flag{
-		cli.BoolFlag{
+		&cli.BoolFlag{
 			Name:        "insecure-skip-tls-verify",
 			Destination: &InsecureSkipTLSVerify,
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:        "system-default-registry",
 			Destination: &SystemDefaultRegistry,
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:        "pod-image",
 			Destination: &ShellPodImage,
 			Value:       "rancher/shell:v0.2.1-rc.7",
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:        "apiui-version",
 			Hidden:      true,
 			Destination: &APIUIVersion,
 			Value:       APIUIVersion,
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:        "bind-address",
 			Destination: &BindAddress,
 			Usage:       `Bind address with url format. The supported schemes are unix, tcp and namedpipe, e.g. unix:///path/to/kube-explorer.sock or namedpipe:/\.\pipe\kube-explorer`,
