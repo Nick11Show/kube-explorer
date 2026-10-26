@@ -38,6 +38,20 @@ func ToServer(ctx context.Context, c *cli.Config, sqlCache bool) (*server.Server
 		restConfig.CAFile = ""
 	}
 
+	if config.Token != "" {
+		// Use the provided bearer token as the sole credential for talking to
+		// the kube-apiserver. The server URL and CA still come from the
+		// kubeconfig (--kubeconfig / auto-detected RKE2-K3s path).
+		restConfig.BearerToken = config.Token
+		restConfig.BearerTokenFile = ""
+		restConfig.Username = ""
+		restConfig.Password = ""
+		restConfig.CertData = nil
+		restConfig.KeyData = nil
+		restConfig.CertFile = ""
+		restConfig.KeyFile = ""
+	}
+
 	if c.WebhookConfig.WebhookAuthentication {
 		auth, err = c.WebhookConfig.WebhookMiddleware()
 		if err != nil {

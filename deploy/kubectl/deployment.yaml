@@ -17,13 +17,49 @@ spec:
         app: kube-explorer
     spec:
       serviceAccountName: kube-explorer
+      # Run on the node network so the kubeconfig's server (https://127.0.0.1:6443)
+      # is reachable from inside the pod, and the explorer is exposed on the host.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      # RKE2/K3s control-plane nodes are tainted by default. Tolerate the
+      # hyphenated key (RKE2/K3s) and the legacy no-hyphen key (RKE1), plus the
+      # cattle.io/os taint, so kube-explorer can schedule on control-plane nodes.
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/controlplane"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+      - key: "cattle.io/os"
+        operator: "Equal"
+        value: "linux"
+        effect: "NoSchedule"
       containers:
-      - image: cnrancher/kube-explorer
+      # v0.6.0-1.31-embed = built with `-tags embed`; ships the Rancher v2.12
+      # dashboard + api-ui inside the binary, so no external UI host is needed.
+      - image: cnrancher/kube-explorer:v0.6.0-1.31-embed
         imagePullPolicy: IfNotPresent
         name: kube-explorer
         ports:
         - containerPort: 8989
           protocol: TCP
+        readinessProbe:
+          tcpSocket:
+            port: 8989
+          initialDelaySeconds: 5
+          periodSeconds: 10
         args:
         - "--https-listen-port=0"
         - "--http-listen-port=8989"
+        volumeMounts:
+        - name: kubeconfig
+          mountPath: /etc/rancher/k3s/k3s.yaml
+          readOnly: true
+      volumes:
+      - name: kubeconfig
+        hostPath:
+          path: /etc/rancher/k3s/k3s.yaml
+          type: File
