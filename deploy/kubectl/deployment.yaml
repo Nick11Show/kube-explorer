@@ -38,9 +38,9 @@ spec:
         value: "linux"
         effect: "NoSchedule"
       containers:
-      # v0.6.0-1.31-embed = built with `-tags embed`; ships the Rancher v2.12
-      # dashboard + api-ui inside the binary, so no external UI host is needed.
-      - image: cnrancher/kube-explorer:v0.6.0-1.31-embed
+      # v0.6.0-1.31 = Line A release tag; built with `-tags embed`, ships the
+      # Rancher v2.12 dashboard + api-ui inside the binary (no external UI host).
+      - image: cnrancher/kube-explorer:v0.6.0-1.31
         imagePullPolicy: IfNotPresent
         name: kube-explorer
         ports:
