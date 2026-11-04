@@ -33,6 +33,8 @@ jobs:
         run: go vet ./...
       - name: go test
         run: go test ./...
+      - name: Download embedded UI assets (gitignored; required for -tags embed)
+        run: bash scripts/download
       - name: Cross-arch build (embed UI) for linux/${{ matrix.arch }}
         env:
           CGO_ENABLED: "0"
