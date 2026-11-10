@@ -59,6 +59,10 @@ jobs:
       - name: Build static binary with embedded UI
         env:
           CGO_ENABLED: "0"
+          # Cross-compile for the matrix target. Without GOARCH the runner
+          # (linux/amd64) would emit an x86-64 binary for BOTH artifacts.
+          GOOS: linux
+          GOARCH: ${{ matrix.arch }}
         run: |
           VERSION="${{ github.ref_name }}"
           COMMIT="$(git rev-parse --short HEAD)"
@@ -68,8 +72,18 @@ jobs:
               -X github.com/cnrancher/kube-explorer/internal/version.GitCommit=${COMMIT} \
               -X github.com/cnrancher/kube-explorer/internal/config.APIUIVersion=1.1.11" \
             -o "dist/kube-explorer-linux-${{ matrix.arch }}" .
-      - name: Smoke test
-        run: ./dist/kube-explorer-linux-${{ matrix.arch }} --help >/dev/null
+      - name: Verify target architecture
+        run: |
+          BIN="dist/kube-explorer-linux-${{ matrix.arch }}"
+          file "$BIN"
+          case "${{ matrix.arch }}" in
+            amd64) file "$BIN" | grep -q "x86-64" ;;
+            arm64) file "$BIN" | grep -q "ARM aarch64" ;;
+          esac
+          # A cross-compiled arm64 binary cannot execute on the amd64 runner.
+          if [ "${{ matrix.arch }}" = "amd64" ]; then
+            "$BIN" --help >/dev/null
+          fi
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
