@@ -1,53 +1,19 @@
-# Pull-request check: dual architecture build + vet + test.
-# Go toolchain is auto-selected from go.mod (Line A 1.24 / Line B 1.26).
 name: pull request
-
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
-
-permissions:
-  contents: read
-
+    types:
+      - opened
+      - reopened
+      - synchronize
 jobs:
-  pr-check:
+  pr-build:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [amd64, arm64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Set up Go (auto from go.mod)
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - name: gofmt
-        run: |
-          out="$(gofmt -l .)"
-          if [ -n "$out" ]; then echo "Need gofmt on:"; echo "$out"; exit 1; fi
-      - name: go vet
-        run: go vet ./...
-      - name: go test
-        run: go test ./...
-      - name: Download embedded UI assets (gitignored; required for -tags embed)
-        run: bash scripts/download
-      - name: Cross-arch build (embed UI) for linux/${{ matrix.arch }}
-        env:
-          CGO_ENABLED: "0"
-          GOOS: linux
-          GOARCH: ${{ matrix.arch }}
-        run: |
-          go build -tags embed \
-            -o "dist/kube-explorer-linux-${{ matrix.arch }}" .
-      - name: Verify target architecture
-        run: |
-          BIN="dist/kube-explorer-linux-${{ matrix.arch }}"
-          file "$BIN"
-          case "${{ matrix.arch }}" in
-            amd64) file "$BIN" | grep -q "x86-64" ;;
-            arm64) file "$BIN" | grep -q "ARM aarch64" ;;
-          esac
+      - name: Commitsar check
+        uses: aevea/commitsar@v0.20.2
+      - name: Build to test
+        run: make ci
