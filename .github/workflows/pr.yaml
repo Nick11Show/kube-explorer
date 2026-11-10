@@ -38,6 +38,16 @@ jobs:
       - name: Cross-arch build (embed UI) for linux/${{ matrix.arch }}
         env:
           CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: ${{ matrix.arch }}
         run: |
           go build -tags embed \
             -o "dist/kube-explorer-linux-${{ matrix.arch }}" .
+      - name: Verify target architecture
+        run: |
+          BIN="dist/kube-explorer-linux-${{ matrix.arch }}"
+          file "$BIN"
+          case "${{ matrix.arch }}" in
+            amd64) file "$BIN" | grep -q "x86-64" ;;
+            arm64) file "$BIN" | grep -q "ARM aarch64" ;;
+          esac
