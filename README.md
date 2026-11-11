@@ -6,7 +6,11 @@ kube-explorer is a portable, almost stateless explorer for Kubernetes with no ex
 
 > 上游项目：[cnrancher/kube-explorer](https://github.com/cnrancher/kube-explorer)
 >
-> **使用者请看 [使用说明](./docs/USAGE.md)**：获取方式、连接集群、部署、访问 UI、常见问题。本 README 侧重版本矩阵、构建与发布。
+> **使用者文档**：
+> - [使用说明](./docs/USAGE.md) — 获取方式、连接集群、部署、访问 UI、常见问题。
+> - [远程 / Tailscale 使用手册](./docs/REMOTE-USAGE.md) — 从另一台机器（如 Mac mini）使用、私有 Harbor 与自签证书、跨机器连接远程集群、端口转发与排障。
+>
+> 本 README 侧重版本矩阵、构建与发布。
 
 ![](docs/assets/kube-explorer-record.gif)
 
@@ -17,7 +21,7 @@ kube-explorer is a portable, almost stateless explorer for Kubernetes with no ex
 | 上游 v0.4 | — | >= 1.25 <= 1.28 | Rancher v2.8.x | — | 上游历史版本 |
 | 上游 v0.5 | `main` 基线 | >= 1.27 <= 1.30 | Rancher v2.9.x | — | 上游历史版本 |
 | **Line A** | `k8s-1.31-1.33` | **1.31 – 1.33**（RKE2 / K3s） | Rancher v2.12.x：steve v0.6.40、client-go v0.33.4、Go 1.24.x | `v0.6.0-1.31` | **已发布** |
-| **Line B** ← 当前分支 | `k8s-1.34-1.36` | **1.34 – 1.36**（RKE2 / K3s） | Rancher v2.15.2：steve v0.9.23、client-go v0.36.4、Go 1.26.x | `v0.6.1-1.34` | 本地构建 + 真集群验证完成，待发布 |
+| **Line B** ← 当前分支 | `k8s-1.34-1.36` | **1.34 – 1.36**（RKE2 / K3s） | Rancher v2.15.2：steve v0.9.23、client-go v0.36.4、Go 1.26.x | `v0.6.1-1.34` | **已发布** |
 
 **请按集群的 Kubernetes 版本选择对应的构建线与 tag**，跨大版本混用可能因 client-go 与 apiserver 不兼容而失败。
 
