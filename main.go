@@ -34,6 +34,9 @@ func main() {
 func run(_ *cli.Context) error {
 	ctx := signals.SetupSignalContext()
 	keconfig.Debug.MustSetupDebug()
+	// client-go reads feature gates once, on first use. Apply our
+	// 1.34-compatibility default before any informer/client is created.
+	keconfig.EnsureKubeFeatureDefaults()
 	// Auto-detect RKE2/K3s kubeconfig when neither --kubeconfig nor the
 	// KUBECONFIG env var is provided (e.g. when running on a cluster node).
 	keconfig.Steve.KubeConfig = keconfig.ResolveKubeConfig(keconfig.Steve.KubeConfig)

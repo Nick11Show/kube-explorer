@@ -166,6 +166,15 @@ curl -H 'Impersonate-User: alice' -H 'Impersonate-Group: developers' \
 
 以 `./kube-explorer --help` 实际输出为准；不同小版本的 steve 可能增减参数。
 
+### Line B 的环境变量默认值
+
+程序启动时会把 `KUBE_FEATURE_WatchListClient` 默认设为 `false`（仅当你没有显式设置时才生效）。原因：client-go v0.36 默认开启的流式 LIST 在 **K8s 1.34** apiserver 上收不到结束 bookmark，informer 永不就绪，列表接口会一直挂起；关闭后回落为普通分页 LIST，1.34–1.36 都能用。若你的集群是 1.35+ 且想启用该优化：
+
+```bash
+KUBE_FEATURE_WatchListClient=true ./kube-explorer --kubeconfig ... \
+  --http-listen-port=8989 --https-listen-port=0
+```
+
 ---
 
 ## 6. 部署到 Kubernetes 集群
@@ -328,6 +337,7 @@ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8989/favicon.ico
 | API 返回 403 / 资源列表为空 | kubeconfig 用户或 ServiceAccount 权限不足；集群内部署时检查 `clusterRoleBinding.yaml`。 |
 | apiserver 证书校验失败 | 测试环境可临时加 `--insecure-skip-tls-verify`；正式环境应配置正确的 CA。 |
 | 连接新版本集群异常 | 检查是否用错构建线；按第 1 节的支持矩阵选择 tag。 |
+| Line B 在 K8s 1.34 上 `/v1/namespaces`、`/v1/pods` 一直不返回，但单个对象和 `?limit=1` 正常 | client-go `WatchListClient` 与 1.34 apiserver 的 initial-events bookmark 不兼容，informer 缓存未同步。本版本已默认关闭该特性；若被外部显式设为 `true`，删除 `KUBE_FEATURE_WatchListClient` 或设为 `false` 后重启。日志里会有成片的 `Warning: event bookmark expired`。 |
 | 拉取镜像时报 TLS 错误 | 自签名 registry：见第 7 节的 insecure registry 配置与 `--insecure-registry`。 |
 | `x509: cannot validate certificate for <IP> because it doesn't contain any IP SANs` | registry 证书只有 DNS SAN。改用证书中包含的域名，或按第 7 节为该 IP host 配 `skip_verify = true`（RKE2 节点无需重启服务）。 |
 

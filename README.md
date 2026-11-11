@@ -24,6 +24,8 @@ kube-explorer is a portable, almost stateless explorer for Kubernetes with no ex
 - Line A 已在单节点 K3s `v1.32.12+k3s1`（linux/arm64）完成端到端验证：节点 / Pod / Namespace 查询、Dashboard 与静态资源均正常。
 - Line B 已在单节点 RKE2 `v1.34.7+rke2r1`（linux/amd64）完成端到端验证：节点 / Pod / Namespace 查询、Rancher v2.15.2 Dashboard 与静态资源均正常；并真机验证了 `/etc/rancher/rke2/rke2.yaml` 自动探测分支。
 
+> **Line B 兼容性修复（必读）**：client-go v0.36.4 默认开启的 `WatchListClient`（K8s 1.35+ 起默认 true）依赖 apiserver 发送 initial-events-end bookmark。在 **K8s 1.34** 上该 bookmark 不到达，informer 缓存永远无法同步，`/v1/namespaces`、`/v1/pods` 等列表接口会**无限挂起**。本分支在程序启动时自动设置 `KUBE_FEATURE_WatchListClient=false`（除非用户已显式设置该变量），改用经典分页 LIST，覆盖 1.34–1.36 全区间。1.35+ 集群可显式设置 `KUBE_FEATURE_WatchListClient=true` 重新启用流式 LIST。
+
 ## 快速开始
 
 ### 下载
@@ -184,6 +186,7 @@ make dev
   - 通过 Ingress 做 Basic Auth：[nginx](./deploy/kubectl/nginx-auth/README.md)、[traefik-v1](./deploy/kubectl/traefik-v1-auth/README.md)、[traefik-v2](./deploy/kubectl/traefik-v2-auth/README.md)
 - RKE2 / K3s kubeconfig 自动探测、`--token` 认证、control-plane 污点容忍、Dashboard + api-ui 内嵌进静态二进制
 - （Line B 新增）Rancher v2.15.2 Dashboard 内嵌、`--enable-header-auth` 真正生效、RKE2 独立命名空间部署清单
+- （Line B 新增）自动关闭 `WatchListClient` 特性门控，修复 client-go v0.36 在 K8s 1.34 上列表接口挂起的问题
 
 ## 相关项目
 
