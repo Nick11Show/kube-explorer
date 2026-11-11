@@ -3,8 +3,9 @@
 # Build context must contain the staged binaries:
 #   kube-explorer-linux-amd64
 #   kube-explorer-linux-arm64
-# buildx sets TARGETOS/TARGETARCH per platform, so this serves both the
-# single-arch local builds and the multi-arch CI build.
+# TARGETOS/TARGETARCH are set per platform by the container builder, so both
+# per-arch builds (composed into a multi-arch manifest) use this same file.
+# Images are built and pushed to the private registry locally, not in CI.
 FROM scratch
 ARG TARGETARCH
 ARG TARGETOS

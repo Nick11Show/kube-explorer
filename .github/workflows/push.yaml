@@ -10,6 +10,11 @@
 #
 # The correct Go toolchain is selected automatically from each branch's go.mod
 # via `go-version-file`, so a single workflow serves both build lines.
+#
+# NOTE: this workflow does NOT publish container images. GitHub-hosted runners
+# cannot reach the private Harbor registry, and the project deliberately keeps
+# image publishing local-only. Images are built from these release binaries and
+# pushed to the private registry on the operator's machine; see docs/USAGE.md.
 name: Release (dual build line × dual arch)
 
 on:
@@ -28,14 +33,6 @@ on:
 
 permissions:
   contents: write
-  packages: write
-
-env:
-  # Push to GitHub Container Registry (ghcr.io) under the repo owner.
-  # The previously-used `cnrancher/kube-explorer` Docker Hub repo is not writable,
-  # and the local Harbor (100.116.110.97:8443) is not reachable from GitHub-hosted
-  # runners, so ghcr.io is the registry that works out-of-the-box here.
-  IMAGE: ghcr.io/${{ github.repository_owner }}/kube-explorer
 
 jobs:
   binaries:
@@ -91,61 +88,16 @@ jobs:
           path: dist/kube-explorer-linux-${{ matrix.arch }}
           if-no-files-found: error
 
-  image:
-    name: Build & push multi-arch image
-    needs: binaries
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Download binaries
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          pattern: kube-explorer-linux-*
-          merge-multiple: true
-      - name: Stage binaries for image build
-        run: |
-          mkdir -p package
-          cp artifacts/kube-explorer-linux-amd64 package/
-          cp artifacts/kube-explorer-linux-arm64 package/
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE }}
-          tags: |
-            type=ref,event=tag
-            type=ref,event=branch
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Build and push multi-arch image
-        uses: docker/build-push-action@v6
-        with:
-          platforms: linux/amd64,linux/arm64
-          context: package
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
   release:
     name: Draft GitHub release
-    needs: [binaries, image]
+    needs: binaries
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
-      # Only the two binary artifacts are needed here. Without `pattern`,
-      # download-artifact also picks up the internal `*.dockerbuild` cache
-      # artifact produced by docker/build-push-action, whose download can fail
-      # after retries and abort the whole release job.
+      # Explicit pattern so only the two binary artifacts are downloaded.
+      # An unfiltered download-artifact can also pick up internal cache
+      # artifacts (e.g. buildx `*.dockerbuild`) whose download may fail after
+      # retries and abort the whole release job.
       - name: Download binaries
         uses: actions/download-artifact@v4
         with:
@@ -164,9 +116,9 @@ jobs:
             Static, UI-embedded binaries for **linux/amd64** and **linux/arm64**.
 
             - Pick the release line that matches your Kubernetes version (see the
-              [Support Matrix](https://github.com/${{ github.repository }}/blob/HEAD/README.md#support-matrix)).
-            - The multi-arch container image is published to
-              `ghcr.io/${{ github.repository_owner }}/kube-explorer` with the same tag.
+              [Support Matrix](https://github.com/${{ github.repository }}/blob/HEAD/README.md#版本与支持矩阵)).
+            - Container images are published to the project's **private registry**
+              (not to any public registry); see [Usage Guide](https://github.com/${{ github.repository }}/blob/HEAD/docs/USAGE.md).
             - Usage: `./kube-explorer --http-listen-port=8989 --https-listen-port=0`
               (add `--kubeconfig=...` or let it auto-detect in-cluster configs).
 

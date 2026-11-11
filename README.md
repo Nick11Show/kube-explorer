@@ -5,6 +5,8 @@ kube-explorer is a portable, almost stateless explorer for Kubernetes with no ex
 本仓库是按 Kubernetes 版本区间**分线维护**的构建版本：不同 Kubernetes 大版本使用的 steve / client-go 差异较大，因此拆成两条独立构建线，各自锁定依赖栈并单独发版。
 
 > 上游项目：[cnrancher/kube-explorer](https://github.com/cnrancher/kube-explorer)
+>
+> **使用者请看 [使用说明](./docs/USAGE.md)**：获取方式、连接集群、部署、访问 UI、常见问题。本 README 侧重版本矩阵、构建与发布。
 
 ![](docs/assets/kube-explorer-record.gif)
 
@@ -34,14 +36,14 @@ Line A 已在单节点 K3s `v1.32.12+k3s1`（linux/arm64）完成端到端验证
 
 ### 运行
 
-仅监听 HTTP（关闭 HTTPS）：
+默认监听 HTTPS `9443` / HTTP `9080`。常用做法是只开 HTTP 并指定端口（关闭 HTTPS）：
 
 ```bash
 ./kube-explorer --kubeconfig=/path/to/kubeconfig \
   --http-listen-port=8989 --https-listen-port=0
 ```
 
-浏览器打开 `http://<host>:8989`。
+浏览器打开 `http://<host>:8989`（根路径会跳转到 `/dashboard/`）。完整参数与更多用法见 [使用说明](./docs/USAGE.md)。
 
 ### kubeconfig 自动探测
 
@@ -98,16 +100,28 @@ kubectl apply -f deploy/kubectl/serviceAccount.yaml \
 
 ## 容器镜像
 
-- CI 发版产物推送到 **ghcr.io**：`ghcr.io/<owner>/kube-explorer:<tag>`，为 `linux/amd64` + `linux/arm64` 多架构 manifest。
-- 内网离线部署可把同一镜像 retag 后推到自建 registry（例如 Harbor），再在 `deployment.yaml` 中引用。
-- 运行时镜像基于 `FROM scratch`：二进制为 `CGO_ENABLED=0` 全静态链接，镜像内只有 `/usr/bin/kube-explorer`，无系统包依赖、构建过程无需联网安装基础软件。
+**镜像只发布到自建私有 registry（例如 Harbor），不推送到任何公共 registry。** CI 只产出静态二进制并附到 GitHub release；镜像由运维在本机从这两个二进制构建后推送到私有 registry。这样 GitHub-hosted runner 无需访问内网，也不需要任何公共仓库的写权限。
+
+运行时镜像基于 `FROM scratch`：二进制为 `CGO_ENABLED=0` 全静态链接，镜像内只有 `/usr/bin/kube-explorer`，无系统包依赖、构建过程无需联网安装基础软件。
 
 ```bash
-# 示例：把验证过的镜像推送到自建 registry
-nerdctl tag ghcr.io/<owner>/kube-explorer:v0.6.0-1.31 \
-  <your-registry>/library/kube-explorer:v0.6.0-1.31
-nerdctl push <your-registry>/library/kube-explorer:v0.6.0-1.31
+# 构建目录内放好两个 release 二进制；Dockerfile 直接复制仓库的 package/Dockerfile
+BUILD=/path/to/build-dir
+REG=<your-registry>/library/kube-explorer
+TAG=v0.6.0-1.31
+cp package/Dockerfile "$BUILD/"
+
+nerdctl build --platform linux/amd64 -f "$BUILD/Dockerfile" -t "$REG:$TAG-amd64" "$BUILD"
+nerdctl build --platform linux/arm64 -f "$BUILD/Dockerfile" -t "$REG:$TAG-arm64" "$BUILD"
+nerdctl push --insecure-registry "$REG:$TAG-amd64"
+nerdctl push --insecure-registry "$REG:$TAG-arm64"
+
+# 合成 linux/amd64 + linux/arm64 多架构 manifest（子镜像需已在 registry 中）
+nerdctl manifest create "$REG:$TAG" "$REG:$TAG-amd64" "$REG:$TAG-arm64"
+nerdctl manifest push --insecure-registry "$REG:$TAG"
 ```
+
+自签名证书的 Harbor 需先给 containerd 配置 insecure registry（`manifest create` 不读命令行的 `--insecure-registry`）；完整步骤见 [使用说明](./docs/USAGE.md#7-容器镜像与私有-registry)。
 
 ## 从源码构建
 
@@ -148,7 +162,7 @@ make dev
 | Workflow | 触发 | 内容 |
 | -------- | ---- | ---- |
 | `.github/workflows/pr.yaml` | Pull Request | gofmt / go vet / go test + `linux/amd64`、`linux/arm64` 双架构交叉编译 |
-| `.github/workflows/push.yaml` | 分支 push、按线 tag push | 下载 UI 资产 → 双架构静态二进制 → 多架构镜像推 ghcr.io → tag 时创建 draft GitHub release |
+| `.github/workflows/push.yaml` | 分支 push、按线 tag push | 下载 UI 资产 → 双架构静态二进制（含架构校验）→ tag 时创建 draft GitHub release 并附上两个二进制；**不构建/推送镜像** |
 
 - Go 版本通过 `actions/setup-go` 的 `go-version-file: go.mod` 自动选择，因此同一个 workflow 可服务 Go 1.24（Line A）与 Go 1.26（Line B）两条构建线。
 - tag 规则：Line A `v*.*.*-1.31`，Line B `v*.*.*-1.34`。
