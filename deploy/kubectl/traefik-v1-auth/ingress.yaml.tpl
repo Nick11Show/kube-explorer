@@ -6,7 +6,7 @@ apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: kube-explorer
-  namespace: kube-system
+  namespace: kube-explorer
   labels:
     app: kube-explorer
   annotations:

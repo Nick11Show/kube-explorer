@@ -36,5 +36,10 @@ func Flags() []cli.Flag {
 			Destination: &BindAddress,
 			Usage:       `Bind address with url format. The supported schemes are unix, tcp and namedpipe, e.g. unix:///path/to/kube-explorer.sock or namedpipe:/\.\pipe\kube-explorer`,
 		},
+		&cli.StringFlag{
+			Name:        "token",
+			Destination: &Token,
+			Usage:       "Bearer token used to authenticate to the kube-apiserver (combined with --kubeconfig for the API server URL and CA). Overrides the kubeconfig user credentials when set.",
+		},
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/rancher/steve/pkg/server/router"
 	"github.com/rancher/wrangler/v3/pkg/kubeconfig"
 	"github.com/rancher/wrangler/v3/pkg/ratelimit"
+	"k8s.io/apiserver/pkg/authentication/user"
 
 	"github.com/cnrancher/kube-explorer/internal/config"
 	"github.com/cnrancher/kube-explorer/internal/resources/cluster"
@@ -38,11 +39,41 @@ func ToServer(ctx context.Context, c *cli.Config, sqlCache bool) (*server.Server
 		restConfig.CAFile = ""
 	}
 
+	if config.Token != "" {
+		// Use the provided bearer token as the sole credential for talking to
+		// the kube-apiserver. The server URL and CA still come from the
+		// kubeconfig (--kubeconfig / auto-detected RKE2-K3s path).
+		restConfig.BearerToken = config.Token
+		restConfig.BearerTokenFile = ""
+		restConfig.Username = ""
+		restConfig.Password = ""
+		restConfig.CertData = nil
+		restConfig.KeyData = nil
+		restConfig.CertFile = ""
+		restConfig.KeyFile = ""
+	}
+
 	if c.WebhookConfig.WebhookAuthentication {
 		auth, err = c.WebhookConfig.WebhookMiddleware()
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	// steve v0.9 exposes --enable-header-auth, but kube-explorer builds its
+	// server through this custom ToServer rather than cli.Config.ToServer, so
+	// the flag would otherwise be accepted and silently ignored. Mirror the
+	// upstream behaviour: honour Impersonate-* headers, and fall back to an
+	// admin identity when they are absent.
+	if c.EnableHeaderAuthentication {
+		impersonateOrAdmin := func(req *http.Request) (user.Info, bool, error) {
+			info, ok, err := steveauth.Impersonation(req)
+			if ok || err != nil {
+				return info, ok, err
+			}
+			return steveauth.AlwaysAdmin(req)
+		}
+		auth = steveauth.ToMiddleware(steveauth.AuthenticatorFunc(impersonateOrAdmin))
 	}
 
 	controllers, err := server.NewController(restConfig, nil)

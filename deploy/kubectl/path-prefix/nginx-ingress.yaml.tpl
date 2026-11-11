@@ -8,7 +8,7 @@ metadata:
     nginx.ingress.kubernetes.io/x-forwarded-prefix: "/kube-explorer"
     nginx.ingress.kubernetes.io/rewrite-target: /$2
   name: kube-explorer-ingress
-  namespace: kube-system
+  namespace: kube-explorer
 spec:
   rules:
     - host: "${MY_IP}.sslip.io" # Replace with your actual domain

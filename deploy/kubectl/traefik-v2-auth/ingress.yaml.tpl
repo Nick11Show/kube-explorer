@@ -6,11 +6,11 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: kube-explorer
-  namespace: kube-system
+  namespace: kube-explorer
   labels:
     app: kube-explorer
   annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: kube-system-kube-explorer@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: kube-explorer-kube-explorer@kubernetescrd
 spec:
   rules:
   - host: "${MY_IP}.sslip.io"

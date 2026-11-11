@@ -2,28 +2,79 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kube-explorer
-  namespace: kube-system
+  # Dedicated namespace: deploying here only ADDS objects, it never touches
+  # existing cattle-system / kube-system workloads.
+  namespace: kube-explorer
   labels:
     app: kube-explorer
 spec:
+  # Recreate (not RollingUpdate) so the single hostNetwork pod frees port 8989
+  # before the new one starts; avoids the bind-deadlock on a one-node cluster.
+  strategy:
+    type: Recreate
   replicas: 1
   selector:
     matchLabels:
       app: kube-explorer
   template:
     metadata:
-      namespace: kube-system
+      namespace: kube-explorer
       labels:
         app: kube-explorer
     spec:
       serviceAccountName: kube-explorer
+      # Run on the node network so the kubeconfig's server (https://127.0.0.1:6443)
+      # is reachable from inside the pod, and the explorer is exposed on the host.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      # RKE2/K3s control-plane nodes are tainted by default. Tolerate the
+      # hyphenated key (RKE2/K3s) and the legacy no-hyphen key (RKE1), plus the
+      # cattle.io/os taint, so kube-explorer can schedule on control-plane nodes.
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/controlplane"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/etcd"
+        operator: "Exists"
+        effect: "NoExecute"
+      - key: "cattle.io/os"
+        operator: "Equal"
+        value: "linux"
+        effect: "NoSchedule"
       containers:
-      - image: cnrancher/kube-explorer
+      # v0.6.1-1.34 = Line B release tag; built with `-tags embed`, ships the
+      # Rancher v2.15.2 dashboard + api-ui inside the binary (no external UI host).
+      # The image is a linux/amd64 + linux/arm64 multi-arch manifest in a private
+      # registry. For self-signed registries the node's containerd needs a
+      # host-level skip_verify (see docs/USAGE.md section 7).
+      - image: 100.116.110.97:8443/library/kube-explorer:v0.6.1-1.34
         imagePullPolicy: IfNotPresent
         name: kube-explorer
         ports:
         - containerPort: 8989
           protocol: TCP
+        readinessProbe:
+          tcpSocket:
+            port: 8989
+          initialDelaySeconds: 5
+          periodSeconds: 10
         args:
         - "--https-listen-port=0"
         - "--http-listen-port=8989"
+        volumeMounts:
+        # Line B is validated on RKE2: mount rke2.yaml (for K3s change both
+        # paths below to /etc/rancher/k3s/k3s.yaml). ResolveKubeConfig()
+        # auto-detects this path, so no --kubeconfig argument is needed.
+        - name: kubeconfig
+          mountPath: /etc/rancher/rke2/rke2.yaml
+          readOnly: true
+      volumes:
+      - name: kubeconfig
+        hostPath:
+          path: /etc/rancher/rke2/rke2.yaml
+          type: File

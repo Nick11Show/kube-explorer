@@ -4,7 +4,7 @@ apiVersion: traefik.containo.us/v1alpha1
 kind: Middleware
 metadata:
   name: kube-explorer
-  namespace: kube-system
+  namespace: kube-explorer
   labels:
     app: kube-explorer
 spec:
@@ -20,7 +20,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: kube-explorer
-  namespace: kube-system
+  namespace: kube-explorer
   labels:
     app: kube-explorer
 data:

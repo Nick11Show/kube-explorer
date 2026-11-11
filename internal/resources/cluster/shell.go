@@ -117,21 +117,30 @@ func (s *shell) createPod() *v1.Pod {
 			Tolerations: []v1.Toleration{
 				{
 					Key:      "cattle.io/os",
-					Operator: "Equal",
+					Operator: v1.TolerationOpEqual,
 					Value:    "linux",
-					Effect:   "NoSchedule",
+					Effect:   v1.TaintEffectNoSchedule,
 				},
+				// RKE2 / K3s control-plane nodes use the hyphenated taint key.
+				{
+					Key:      "node-role.kubernetes.io/control-plane",
+					Operator: v1.TolerationOpEqual,
+					Value:    "true",
+					Effect:   v1.TaintEffectNoSchedule,
+				},
+				// RKE1 control-plane nodes use the legacy (no-hyphen) taint key.
 				{
 					Key:      "node-role.kubernetes.io/controlplane",
-					Operator: "Equal",
+					Operator: v1.TolerationOpEqual,
 					Value:    "true",
-					Effect:   "NoSchedule",
+					Effect:   v1.TaintEffectNoSchedule,
 				},
+				// RKE2 (external) etcd nodes.
 				{
 					Key:      "node-role.kubernetes.io/etcd",
-					Operator: "Equal",
+					Operator: v1.TolerationOpEqual,
 					Value:    "true",
-					Effect:   "NoExecute",
+					Effect:   v1.TaintEffectNoExecute,
 				},
 			},
 			Containers: []v1.Container{

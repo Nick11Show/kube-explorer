@@ -1,22 +1,42 @@
 #!/bin/bash
+set -e
+#
+# Download UI assets used when building with the "embed" build tag.
+#
+# The dashboard assets are sourced from the official Rancher dashboard release,
+# using the "*-embedded" build which is designed for embedding (it serves its
+# assets under /dashboard/ and references /favicon.png, matching the
+# kube-explorer embedded UI router).
+#
+# The original Pandaria dashboard source
+# (pandaria-dashboard-ui.s3.ap-southeast-2.amazonaws.com) is no longer
+# reachable and has been removed.
+#
+# Override the versions via environment variables:
+#   CATTLE_DASHBOARD_UI_VERSION  (default v2.15.2 for the Rancher v2.15.2 stack)
+#   CATTLE_API_UI_VERSION        (default 1.1.11)
 
-source $(dirname $0)/version
+source "$(dirname "$0")/version"
 
-cd "$(dirname $0)/.." || exit 1;
+: "${CATTLE_DASHBOARD_UI_VERSION:=v2.15.2}"
+: "${CATTLE_API_UI_VERSION:=1.1.11}"
 
-if [[ "$(uname)" == "Darwin" ]]; then
-    TAR_CMD="gtar"
-else
-    TAR_CMD="tar"
-fi
+cd "$(dirname "$0")/.." || exit 1;
 
-rm -rf internal/ui/ui/*
+TAR_CMD="tar"
 
-mkdir -p internal/ui/ui/dashboard 
-cd internal/ui/ui/dashboard || exit 1;
-curl -sL https://pandaria-dashboard-ui.s3.ap-southeast-2.amazonaws.com/release-2.9-cn/kube-explorer-ui/${CATTLE_DASHBOARD_UI_VERSION}.tar.gz | $TAR_CMD xvzf - --strip-components=2
-cp index.html ../index.html
+rm -rf internal/ui/ui/dashboard internal/ui/ui/api-ui
+mkdir -p internal/ui/ui/dashboard internal/ui/ui/api-ui
 
-mkdir ../api-ui
-cd ../api-ui || exit 1;
-curl -sL https://releases.rancher.com/api-ui/${CATTLE_API_UI_VERSION}.tar.gz | $TAR_CMD xvzf - --strip-components=1
+# Dashboard (embedded build)
+echo "Downloading Rancher dashboard ${CATTLE_DASHBOARD_UI_VERSION} (embedded)..."
+TMP="$(mktemp -d)"
+curl -fsSL "https://releases.rancher.com/dashboard/${CATTLE_DASHBOARD_UI_VERSION}.tar.gz" -o "$TMP/dashboard.tar.gz"
+tar xzf "$TMP/dashboard.tar.gz" -C internal/ui/ui/dashboard --strip-components=2 "dist/${CATTLE_DASHBOARD_UI_VERSION}-embedded"
+# Keep a copy at ui/index.html for the non-embed (filepath) handler parity.
+cp internal/ui/ui/dashboard/index.html internal/ui/ui/index.html 2>/dev/null || true
+rm -rf "$TMP"
+
+# API UI
+echo "Downloading Rancher api-ui ${CATTLE_API_UI_VERSION}..."
+curl -fsSL "https://releases.rancher.com/api-ui/${CATTLE_API_UI_VERSION}.tar.gz" | $TAR_CMD xzf - -C internal/ui/ui/api-ui --strip-components=1

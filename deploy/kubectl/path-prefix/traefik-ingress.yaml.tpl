@@ -5,9 +5,9 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: kube-explorer-ingress
-  namespace: kube-system
+  namespace: kube-explorer
   annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: kube-system-prefix@kubernetescrd,kube-system-add-header@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: kube-explorer-prefix@kubernetescrd,kube-explorer-add-header@kubernetescrd
 spec:
   rules:
   - host: "${MY_IP}.sslip.io"  # Replace with your actual domain
@@ -25,7 +25,7 @@ apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: prefix
-  namespace: kube-system
+  namespace: kube-explorer
 spec:
   stripPrefix:
     prefixes:
@@ -35,7 +35,7 @@ apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: add-header
-  namespace: kube-system
+  namespace: kube-explorer
 spec:
   headers:
     customRequestHeaders:
